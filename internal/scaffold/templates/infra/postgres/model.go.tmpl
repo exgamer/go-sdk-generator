@@ -1,0 +1,13 @@
+package {{.Module}}
+
+type {{.Module}} struct {
+	ID uint `gorm:"column:id;primaryKey;autoIncrement"`
+{{- range .ModelFields}}
+	{{.Name}} {{.Type}} `gorm:"column:{{.Column}}"`
+{{- end}}
+	Status int `gorm:"column:status"`
+}
+
+func ({{.Module}}) TableName() string {
+	return "{{.TableName}}"
+}

@@ -1,0 +1,9 @@
+package {{.Module}}
+
+type {{.EntityName}} struct {
+	ID uint
+{{- range .Fields}}
+	{{.Name}} {{.Type}}
+{{- end}}
+	Status int
+}

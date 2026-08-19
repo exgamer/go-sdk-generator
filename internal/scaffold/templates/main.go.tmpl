@@ -1,0 +1,28 @@
+package main
+
+import (
+	"log"
+
+	"{{.ModulePath}}/internal/app"
+)
+
+// @title        {{.AppTitle}} (API)
+// @version      1.0
+// @description  {{.AppTitle}}
+// @host         0.0.0.0:8090
+// @BasePath     /
+//
+// После первого запуска `swag init` добавь сюда блочный импорт пакета docs:
+// _ "{{.ModulePath}}/docs"
+func main() {
+	appInstance, err := app.NewApp()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = appInstance.RunAll(); err != nil {
+		log.Fatal(err)
+	}
+
+	appInstance.WaitForShutdown()
+}

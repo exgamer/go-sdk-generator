@@ -1,0 +1,47 @@
+package app
+
+import (
+	"git.mpinnovations.kz/mps/go-packages/gosdk-core/pkg/app"
+{{- if .HasHttp}}
+	http "git.mpinnovations.kz/mps/go-packages/gosdk-http-core/pkg/app"
+{{- end}}
+{{- if .HasPostgres}}
+	postgres "git.mpinnovations.kz/mps/go-packages/gosdk-postgres-core/pkg/app"
+{{- end}}
+{{- if .HasRabbit}}
+	rabbitapp "git.mpinnovations.kz/mps/go-packages/gosdk-rabbit-core/pkg/app"
+{{- end}}
+)
+
+type App struct {
+	*app.App
+}
+
+func NewApp() (*App, error) {
+	appInstance := &App{
+		App: app.NewApp(),
+	}
+
+	err := appInstance.RegisterAndInitKernels(
+{{- if .HasPostgres}}
+		&postgres.PostgresKernel{},
+{{- end}}
+{{- if .HasHttp}}
+		&http.HttpKernel{},
+{{- end}}
+{{- if .HasRabbit}}
+		rabbitapp.NewRabbitKernel().EnableConsumer().EnablePublisher(),
+{{- end}}
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Модули регистрируются здесь по мере появления, например:
+	// err = appInstance.RegisterAndInitModules(&city.Module{})
+	if err = appInstance.RegisterAndInitModules(); err != nil {
+		return nil, err
+	}
+
+	return appInstance, nil
+}

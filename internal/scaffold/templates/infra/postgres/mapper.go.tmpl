@@ -1,0 +1,33 @@
+package {{.Module}}
+
+import domain "{{.DomainImport}}"
+
+// modelToEntity преобразует DB модель в доменную сущность
+func modelToEntity(m *{{.Module}}) *domain.{{.EntityName}} {
+	if m == nil {
+		return nil
+	}
+
+	return &domain.{{.EntityName}}{
+		ID: m.ID,
+{{- range .Fields}}
+		{{.Name}}: m.{{.Name}},
+{{- end}}
+		Status: m.Status,
+	}
+}
+
+// entityToModel преобразует доменную сущность в DB модель
+func entityToModel(e *domain.{{.EntityName}}) *{{.Module}} {
+	if e == nil {
+		return nil
+	}
+
+	return &{{.Module}}{
+		ID: e.ID,
+{{- range .Fields}}
+		{{.Name}}: e.{{.Name}},
+{{- end}}
+		Status: e.Status,
+	}
+}

@@ -1,0 +1,11 @@
+package {{.Module}}
+
+// {{.Module}} — модель ответа внешнего HTTP-сервиса.
+// TODO: привести поля в соответствие с реальным ответом внешнего API.
+type {{.Module}} struct {
+	ID uint `json:"id"`
+{{- range .ModelFields}}
+	{{.Name}} {{.Type}} `json:"{{.Column}}"`
+{{- end}}
+	Status int `json:"status"`
+}

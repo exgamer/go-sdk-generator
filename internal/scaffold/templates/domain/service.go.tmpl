@@ -1,0 +1,62 @@
+package {{.Module}}
+
+import (
+	"context"
+{{- if .HasPaginated}}
+	"git.mpinnovations.kz/mps/go-packages/gosdk-db-core/pkg/query/pagination"
+{{- end}}
+)
+
+func NewService(repository Repository) *Service {
+	return &Service{repository: repository}
+}
+
+type Service struct {
+	repository Repository
+}
+{{- if .HasPaginated}}
+
+func (s *Service) Paginated(ctx context.Context, searchDto *Search) (*pagination.Paginated[{{.EntityName}}], error) {
+	return s.repository.Paginated(ctx, searchDto)
+}
+{{- end}}
+{{- if .HasGetById}}
+
+func (s *Service) GetById(ctx context.Context, id uint) (*{{.EntityName}}, error) {
+	return s.repository.GetById(ctx, id)
+}
+{{- end}}
+{{- if .HasCreate}}
+
+func (s *Service) Create(ctx context.Context, model *{{.EntityName}}) (*{{.EntityName}}, error) {
+	return s.repository.Create(ctx, model)
+}
+{{- end}}
+{{- if .HasUpdate}}
+
+func (s *Service) Update(ctx context.Context, model *{{.EntityName}}) (*{{.EntityName}}, error) {
+	if err := s.repository.Update(ctx, model); err != nil {
+		return nil, err
+	}
+
+	return model, nil
+}
+{{- end}}
+{{- if .HasDelete}}
+
+func (s *Service) Delete(ctx context.Context, id uint) error {
+	return s.repository.Delete(ctx, id)
+}
+{{- end}}
+{{- if .HasActivate}}
+
+func (s *Service) Activate(ctx context.Context, id uint) error {
+	return s.repository.Activate(ctx, id)
+}
+{{- end}}
+{{- if .HasDeactivate}}
+
+func (s *Service) Deactivate(ctx context.Context, id uint) error {
+	return s.repository.Deactivate(ctx, id)
+}
+{{- end}}

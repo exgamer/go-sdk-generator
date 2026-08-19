@@ -1,0 +1,136 @@
+package {{.Module}}
+
+import (
+	"context"
+{{- if .HasGetById}}
+	"errors"
+{{- end}}
+{{- if .HasPaginated}}
+	"strings"
+{{- end}}
+{{- if or .HasGetById .HasCreate .HasUpdate .HasDelete .HasActivate .HasDeactivate}}
+	"time"
+{{- end}}
+
+	domain "{{.DomainImport}}"
+{{- if .HasPaginated}}
+	"git.mpinnovations.kz/mps/go-packages/gosdk-db-core/pkg/query/helpers"
+	"git.mpinnovations.kz/mps/go-packages/gosdk-db-core/pkg/query/pagination"
+{{- end}}
+	"gorm.io/gorm"
+)
+
+func NewPostgresRepository(client *gorm.DB) *PostgresRepository {
+	return &PostgresRepository{client: client}
+}
+
+type PostgresRepository struct {
+	client *gorm.DB
+}
+{{- if .HasPaginated}}
+
+func (r *PostgresRepository) Paginated(ctx context.Context, searchDto *domain.Search) (*pagination.Paginated[domain.{{.EntityName}}], error) {
+	helper := helpers.NewGormPaginatedHelper[domain.{{.EntityName}}](ctx, r.client).SetPerPage(searchDto.PerPage)
+
+	return helper.Paginated(searchDto.Page, func(client *gorm.DB) *gorm.DB {
+		var query []string
+		var args []any
+
+		if searchDto.ID > 0 {
+			query = append(query, "{{.TableName}}.id = ?")
+			args = append(args, searchDto.ID)
+		}
+{{- range .SearchFields}}
+{{- if eq .Type "string"}}
+
+		if searchDto.{{.Name}} != "" {
+			query = append(query, "{{$.TableName}}.{{.Column}} ILIKE ?")
+			args = append(args, "%"+searchDto.{{.Name}}+"%")
+		}
+{{- else}}
+
+		if searchDto.{{.Name}} > 0 {
+			query = append(query, "{{$.TableName}}.{{.Column}} = ?")
+			args = append(args, searchDto.{{.Name}})
+		}
+{{- end}}
+{{- end}}
+
+		return client.
+			WithContext(ctx).
+			Select("*").
+			Where(strings.Join(query, " AND "), args...).
+			Order("id DESC")
+	})
+}
+{{- end}}
+{{- if .HasGetById}}
+
+func (r *PostgresRepository) GetById(ctx context.Context, id uint) (*domain.{{.EntityName}}, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var m {{.Module}}
+	result := r.client.WithContext(ctx).Where("id = ?", id).First(&m)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return modelToEntity(&m), nil
+}
+{{- end}}
+{{- if .HasCreate}}
+
+func (r *PostgresRepository) Create(ctx context.Context, e *domain.{{.EntityName}}) (*domain.{{.EntityName}}, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	m := entityToModel(e)
+	if err := r.client.WithContext(ctx).Create(m).Error; err != nil {
+		return nil, err
+	}
+
+	return modelToEntity(m), nil
+}
+{{- end}}
+{{- if .HasUpdate}}
+
+func (r *PostgresRepository) Update(ctx context.Context, e *domain.{{.EntityName}}) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	return r.client.WithContext(ctx).Save(entityToModel(e)).Error
+}
+{{- end}}
+{{- if .HasDelete}}
+
+func (r *PostgresRepository) Delete(ctx context.Context, id uint) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	return r.client.WithContext(ctx).Delete({{.Module}}{}, "id = ?", id).Error
+}
+{{- end}}
+{{- if .HasActivate}}
+
+func (r *PostgresRepository) Activate(ctx context.Context, id uint) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	return r.client.WithContext(ctx).Model({{.Module}}{}).Where("id = ?", id).Update("status", 1).Error
+}
+{{- end}}
+{{- if .HasDeactivate}}
+
+func (r *PostgresRepository) Deactivate(ctx context.Context, id uint) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	return r.client.WithContext(ctx).Model({{.Module}}{}).Where("id = ?", id).Update("status", 0).Error
+}
+{{- end}}

@@ -1,0 +1,32 @@
+package {{.Module}}
+
+import (
+	"context"
+{{- if .HasPaginated}}
+	"git.mpinnovations.kz/mps/go-packages/gosdk-db-core/pkg/query/pagination"
+{{- end}}
+)
+
+type Repository interface {
+{{- if .HasPaginated}}
+	Paginated(ctx context.Context, searchDto *Search) (*pagination.Paginated[{{.EntityName}}], error)
+{{- end}}
+{{- if .HasGetById}}
+	GetById(ctx context.Context, id uint) (*{{.EntityName}}, error)
+{{- end}}
+{{- if .HasCreate}}
+	Create(ctx context.Context, model *{{.EntityName}}) (*{{.EntityName}}, error)
+{{- end}}
+{{- if .HasUpdate}}
+	Update(ctx context.Context, model *{{.EntityName}}) error
+{{- end}}
+{{- if .HasDelete}}
+	Delete(ctx context.Context, id uint) error
+{{- end}}
+{{- if .HasActivate}}
+	Activate(ctx context.Context, id uint) error
+{{- end}}
+{{- if .HasDeactivate}}
+	Deactivate(ctx context.Context, id uint) error
+{{- end}}
+}

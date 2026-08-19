@@ -1,0 +1,11 @@
+package {{.Module}}
+
+// Search DTO для поиска и фильтрации {{.Module}}
+type Search struct {
+	ID uint
+{{- range .SearchFields}}
+	{{.Name}} {{.Type}}
+{{- end}}
+	Page    uint
+	PerPage uint
+}

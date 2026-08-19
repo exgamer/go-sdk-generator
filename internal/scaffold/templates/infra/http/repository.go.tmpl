@@ -1,0 +1,36 @@
+package {{.Module}}
+
+import (
+	"context"
+	"fmt"
+
+	domain "{{.DomainImport}}"
+	"git.mpinnovations.kz/mps/go-packages/gosdk-http-core/pkg/constants"
+	"git.mpinnovations.kz/mps/go-packages/gosdk-http-core/pkg/gin"
+	"git.mpinnovations.kz/mps/go-packages/gosdk-http-request-builder/pkg/builder"
+)
+
+func NewHttpRepository() *HttpRepository {
+	return &HttpRepository{}
+}
+
+type HttpRepository struct{}
+
+// GetById запрашивает {{.Module}} у внешнего сервиса по id.
+// TODO: заменить URL на реальный адрес внешнего сервиса.
+func (r *HttpRepository) GetById(ctx context.Context, id uint) (*domain.{{.EntityName}}, error) {
+	httpInfo := gin.GetHttpInfoFromContext(ctx)
+
+	resp, err := builder.NewGetHttpRequestBuilder[builder.Response[{{.Module}}]](
+		ctx,
+		fmt.Sprintf("http://{{.Module}}-service/api/v1/{{.TableName}}/%d", id),
+	).SetRequestHeaders(map[string]string{
+		constants.RequestIdHeaderName: httpInfo.RequestId,
+	}).GetResult()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return modelToEntity(&resp.Result.Data), nil
+}
