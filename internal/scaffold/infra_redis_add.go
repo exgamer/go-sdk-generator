@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"git.mpinnovations.kz/mps/go-packages/gosdk-generator/internal/gomod"
+	"github.com/exgamer/go-sdk-generator/internal/gomod"
 )
 
 // InfraRedisOptions controls what AddInfraRedis generates.
@@ -29,23 +29,23 @@ type InfraRedisOptions struct {
 // regardless of which methods `domain add` generated.
 func AddInfraRedis(opts InfraRedisOptions) (InfraResult, error) {
 	root := opts.RootDir
+
 	if root == "" {
 		root = "."
 	}
 
-	if !domainNameRe.MatchString(opts.Domain) {
-		return InfraResult{}, fmt.Errorf("invalid domain %q: lowercase letters/digits only, starting with a letter", opts.Domain)
-	}
-	if !domainNameRe.MatchString(opts.Module) {
-		return InfraResult{}, fmt.Errorf("invalid module %q: lowercase letters/digits only, starting with a letter", opts.Module)
+	if err := validateDomainModule(opts.Domain, opts.Module); err != nil {
+		return InfraResult{}, err
 	}
 
 	parsed, err := ParseDomain(root, opts.Domain, opts.Module)
+
 	if err != nil {
 		return InfraResult{}, err
 	}
 
 	modulePath, err := gomod.ModulePath(root)
+
 	if err != nil {
 		return InfraResult{}, fmt.Errorf("determine module path (run `go mod init` first): %w", err)
 	}
@@ -65,6 +65,7 @@ func AddInfraRedis(opts InfraRedisOptions) (InfraResult, error) {
 	relPath := filepath.Join("internal", "infrastructure", "redis", opts.Domain, opts.Module, "repository.go")
 
 	fr, err := generateFile(root, relPath, "templates/infra/redis/repository.go.tmpl", data, opts.Force)
+
 	if err != nil {
 		return InfraResult{}, err
 	}

@@ -1,15 +1,18 @@
 package app
 
 import (
-	"git.mpinnovations.kz/mps/go-packages/gosdk-core/pkg/app"
+	"github.com/exgamer/gosdk-core/pkg/app"
 {{- if .HasHttp}}
-	http "git.mpinnovations.kz/mps/go-packages/gosdk-http-core/pkg/app"
+	http "github.com/exgamer/gosdk-http-core/pkg/app"
 {{- end}}
 {{- if .HasPostgres}}
-	postgres "git.mpinnovations.kz/mps/go-packages/gosdk-postgres-core/pkg/app"
+	postgres "github.com/exgamer/gosdk-postgres-core/pkg/app"
 {{- end}}
 {{- if .HasRabbit}}
-	rabbitapp "git.mpinnovations.kz/mps/go-packages/gosdk-rabbit-core/pkg/app"
+	rabbitapp "github.com/exgamer/gosdk-rabbit-core/pkg/app"
+{{- end}}
+{{- if .HasRedis}}
+	redis "github.com/exgamer/gosdk-redis-core/pkg/app"
 {{- end}}
 )
 
@@ -32,7 +35,11 @@ func NewApp() (*App, error) {
 {{- if .HasRabbit}}
 		rabbitapp.NewRabbitKernel().EnableConsumer().EnablePublisher(),
 {{- end}}
+{{- if .HasRedis}}
+		&redis.RedisKernel{},
+{{- end}}
 	)
+
 	if err != nil {
 		return nil, err
 	}

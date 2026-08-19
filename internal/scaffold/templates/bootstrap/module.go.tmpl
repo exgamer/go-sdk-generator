@@ -1,0 +1,86 @@
+package {{.Module}}
+
+import (
+{{- if .HasAdmin}}
+	adminHttp "{{.AdminImport}}"
+{{- end}}
+{{- if .HasClient}}
+	clientHttp "{{.ClientImport}}"
+{{- end}}
+{{- if .HasConsumer}}
+	consumer "{{.ConsumerImport}}"
+{{- end}}
+	"github.com/exgamer/gosdk-core/pkg/app"
+	postgresDi "github.com/exgamer/gosdk-postgres-core/pkg/di"
+{{- if .HasRedis}}
+	redisDi "github.com/exgamer/gosdk-redis-core/pkg/di"
+{{- end}}
+{{- if .HasConsumer}}
+	rabbitDi "github.com/exgamer/gosdk-rabbit-core/pkg/di"
+{{- end}}
+{{- if .HasHttpClient}}
+	"{{.ConfigsImport}}"
+	"github.com/spf13/viper"
+{{- end}}
+)
+
+type Module struct{}
+
+func (m *Module) Name() string {
+	return "{{.Module}}"
+}
+
+func (m *Module) Init(a *app.App) error {
+	client, err := postgresDi.GetDefaultPostgresConnection(a.Container)
+
+	if err != nil {
+		return err
+	}
+{{- if .HasRedis}}
+
+	redisClient, err := redisDi.GetRedisClient(a.Container)
+
+	if err != nil {
+		return err
+	}
+{{- end}}
+{{- if .HasHttpClient}}
+
+	var httpCfg configs.{{.EntityName}}Config
+
+	if err := viper.Unmarshal(&httpCfg); err != nil {
+		return err
+	}
+{{- end}}
+
+	repoFactory := newRepositoriesFactory(client{{if .HasRedis}}, redisClient{{end}}{{if .HasHttpClient}}, httpCfg{{end}})
+	svcFactory := newServicesFactory(repoFactory)
+	hdlFactory := newHandlersFactory(svcFactory)
+{{- if .HasAdmin}}
+
+	if err := adminHttp.SetRoutes(a, hdlFactory.Admin{{.EntityName}}Handler); err != nil {
+		return err
+	}
+{{- end}}
+{{- if .HasClient}}
+
+	if err := clientHttp.SetRoutes(a, hdlFactory.Client{{.EntityName}}Handler); err != nil {
+		return err
+	}
+{{- end}}
+{{- if .HasConsumer}}
+
+	consumersFactory := newConsumersFactory()
+	consumers := consumer.GetConsumers(consumersFactory.{{.EntityName}}Consumer)
+
+	reg, err := rabbitDi.GetRabbitConsumersRegistry(a.Container)
+
+	if err != nil {
+		return err
+	}
+
+	reg.RegisterMultipleHandler(consumers)
+{{- end}}
+
+	return nil
+}

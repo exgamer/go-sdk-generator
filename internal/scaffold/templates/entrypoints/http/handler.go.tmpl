@@ -1,0 +1,217 @@
+package {{.Module}}
+
+import (
+{{- if .HasPaginated}}
+	"github.com/exgamer/gosdk-http-core/pkg/helpers"
+{{- end}}
+	domain "{{.DomainImport}}"
+{{- if or .HasPaginated .HasGetById .HasCreate .HasUpdate .HasDelete}}
+	"github.com/exgamer/gosdk-http-core/pkg/response"
+{{- end}}
+	_ "github.com/exgamer/gosdk-http-core/pkg/structures"
+{{- if or .HasPaginated .HasGetById .HasCreate .HasUpdate .HasDelete}}
+	"github.com/exgamer/gosdk-http-core/pkg/validators"
+	"github.com/gin-gonic/gin"
+{{- end}}
+)
+
+func NewHandler(service *domain.Service) *Handler {
+	return &Handler{
+		service: service,
+	}
+}
+
+type Handler struct {
+	service *domain.Service
+}
+{{- if .HasPaginated}}
+
+// @Summary Список {{.Module}}
+// @Description Список {{.Module}}
+// @Tags {{.Module}}
+// @Accept json
+// @Produce json
+// @Param message query indexRequest true "Search {{.Module}}"
+// @Success 200 {object} paginatedResponse
+// @Failure 422 {object} structures.ValidationErrorResponse "Ошибка валидации параметров"
+// @Failure 500 {object} structures.InternalServerResponse "Внутренняя ошибка сервера"
+// @Router {{.Prefix}}/v1/{{.TableName}} [get]
+func (h *Handler) Index() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pagerRequest, err := helpers.GetPagerRequest(c)
+
+		if err != nil {
+			response.UnprocessableEntity(c, err, nil)
+
+			return
+		}
+
+		req := indexRequest{}
+
+		if ok := validators.ValidateRequestQuery(c, &req); !ok {
+			return
+		}
+
+		searchDto := searchFromIndexRequest(req)
+		searchDto.Page = pagerRequest.Page
+		searchDto.PerPage = pagerRequest.PerPage
+
+		paginated, err := h.service.Paginated(c.Request.Context(), searchDto)
+
+		if err != nil {
+			response.InternalServerError(c, err, nil)
+
+			return
+		}
+
+		response.Success(c, paginatedResponseFromPagination(paginated))
+	}
+}
+{{- end}}
+{{- if .HasGetById}}
+
+// @Summary Получить {{.Module}} по id
+// @Description Получить {{.Module}} по id
+// @Tags {{.Module}}
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Success 200 {object} itemResponse
+// @Failure 400 {object} structures.BadRequestErrorResponse "Плохой запрос"
+// @Failure 404 {object} structures.NotFoundErrorResponse "Запись не найдена"
+// @Failure 500 {object} structures.InternalServerResponse "Внутренняя ошибка сервера"
+// @Router {{.Prefix}}/v1/{{.Module}}/{id} [get]
+func (h *Handler) View() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := validators.GetIntQueryParam(c, "id")
+
+		if err != nil {
+			response.BadRequest(c, err, nil)
+
+			return
+		}
+
+		entity, err := h.service.GetById(c.Request.Context(), uint(id))
+
+		if err != nil {
+			response.InternalServerError(c, err, nil)
+
+			return
+		}
+
+		if entity == nil {
+			response.NotFound(c, nil, nil)
+
+			return
+		}
+
+		response.Success(c, itemFromEntity(entity))
+	}
+}
+{{- end}}
+{{- if .HasCreate}}
+
+// @Summary Создать {{.Module}}
+// @Description Создать {{.Module}}
+// @Tags {{.Module}}
+// @Accept json
+// @Produce json
+// @Param message body createRequest true "Create {{.Module}}"
+// @Success 201 {object} itemResponse
+// @Failure 422 {object} structures.ValidationErrorResponse "Ошибка валидации параметров"
+// @Failure 500 {object} structures.InternalServerResponse "Внутренняя ошибка сервера"
+// @Router {{.Prefix}}/v1/{{.Module}} [post]
+func (h *Handler) Create() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := createRequest{}
+
+		if ok := validators.ValidateRequestBody(c, &req); !ok {
+			return
+		}
+
+		entity, err := h.service.Create(c.Request.Context(), entityFromCreateRequest(req))
+
+		if err != nil {
+			response.InternalServerError(c, err, nil)
+
+			return
+		}
+
+		response.SuccessCreated(c, itemFromEntity(entity))
+	}
+}
+{{- end}}
+{{- if .HasUpdate}}
+
+// @Summary Обновить {{.Module}}
+// @Description Обновить {{.Module}}
+// @Tags {{.Module}}
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Param message body updateRequest true "Update {{.Module}}"
+// @Success 200 {object} itemResponse
+// @Failure 400 {object} structures.BadRequestErrorResponse "Плохой запрос"
+// @Failure 422 {object} structures.ValidationErrorResponse "Ошибка валидации параметров"
+// @Failure 500 {object} structures.InternalServerResponse "Внутренняя ошибка сервера"
+// @Router {{.Prefix}}/v1/{{.Module}}/{id} [put]
+func (h *Handler) Update() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := validators.GetIntQueryParam(c, "id")
+
+		if err != nil {
+			response.BadRequest(c, err, nil)
+
+			return
+		}
+
+		req := updateRequest{}
+
+		if ok := validators.ValidateRequestBody(c, &req); !ok {
+			return
+		}
+
+		entity, err := h.service.Update(c.Request.Context(), entityFromUpdateRequest(uint(id), req))
+
+		if err != nil {
+			response.InternalServerError(c, err, nil)
+
+			return
+		}
+
+		response.Success(c, itemFromEntity(entity))
+	}
+}
+{{- end}}
+{{- if .HasDelete}}
+
+// @Summary Удалить {{.Module}}
+// @Description Удалить {{.Module}}
+// @Tags {{.Module}}
+// @Accept json
+// @Produce json
+// @Param id path int true "ID"
+// @Success 200
+// @Failure 400 {object} structures.BadRequestErrorResponse "Плохой запрос"
+// @Failure 500 {object} structures.InternalServerResponse "Внутренняя ошибка сервера"
+// @Router {{.Prefix}}/v1/{{.Module}}/{id} [delete]
+func (h *Handler) Delete() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := validators.GetIntQueryParam(c, "id")
+
+		if err != nil {
+			response.BadRequest(c, err, nil)
+
+			return
+		}
+
+		if err := h.service.Delete(c.Request.Context(), uint(id)); err != nil {
+			response.InternalServerError(c, err, nil)
+
+			return
+		}
+
+		response.SuccessDeleted(c, nil)
+	}
+}
+{{- end}}

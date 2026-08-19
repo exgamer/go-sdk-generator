@@ -12,10 +12,12 @@ import (
 	"time"
 {{- end}}
 
+{{- if or .HasPaginated .HasGetById .HasCreate .HasUpdate}}
 	domain "{{.DomainImport}}"
+{{- end}}
 {{- if .HasPaginated}}
-	"git.mpinnovations.kz/mps/go-packages/gosdk-db-core/pkg/query/helpers"
-	"git.mpinnovations.kz/mps/go-packages/gosdk-db-core/pkg/query/pagination"
+	"github.com/exgamer/gosdk-db-core/pkg/query/helpers"
+	"github.com/exgamer/gosdk-db-core/pkg/query/pagination"
 {{- end}}
 	"gorm.io/gorm"
 )
@@ -91,6 +93,7 @@ func (r *PostgresRepository) Create(ctx context.Context, e *domain.{{.EntityName
 	defer cancel()
 
 	m := entityToModel(e)
+
 	if err := r.client.WithContext(ctx).Create(m).Error; err != nil {
 		return nil, err
 	}

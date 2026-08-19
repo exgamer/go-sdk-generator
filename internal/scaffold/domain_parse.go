@@ -31,11 +31,13 @@ func ParseDomain(rootDir, domain, module string) (ParsedDomain, error) {
 	dir := filepath.Join(rootDir, "internal", "domains", domain, module)
 
 	fields, entityName, err := parseEntityFields(filepath.Join(dir, "entity.go"))
+
 	if err != nil {
 		return ParsedDomain{}, err
 	}
 
 	methods, err := parseRepositoryMethods(filepath.Join(dir, "repository.go"))
+
 	if err != nil {
 		return ParsedDomain{}, err
 	}
@@ -51,34 +53,41 @@ func ParseDomain(rootDir, domain, module string) (ParsedDomain, error) {
 func parseEntityFields(path string) ([]Field, string, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
+
 	if err != nil {
 		return nil, "", fmt.Errorf("read %s (run `codegen domain add` first): %w", path, err)
 	}
 
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
+
 		if !ok || gd.Tok != token.TYPE {
 			continue
 		}
 
 		for _, spec := range gd.Specs {
 			ts, ok := spec.(*ast.TypeSpec)
+
 			if !ok {
 				continue
 			}
 
 			st, ok := ts.Type.(*ast.StructType)
+
 			if !ok {
 				continue
 			}
 
 			var fields []Field
+
 			for _, f := range st.Fields.List {
 				typ := exprString(fset, f.Type)
+
 				for _, name := range f.Names {
 					if name.Name == "ID" || name.Name == "Status" {
 						continue
 					}
+
 					fields = append(fields, Field{Name: name.Name, Type: typ})
 				}
 			}
@@ -93,33 +102,40 @@ func parseEntityFields(path string) ([]Field, string, error) {
 func parseRepositoryMethods(path string) ([]string, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
+
 	if err != nil {
 		return nil, fmt.Errorf("read %s (run `codegen domain add` first): %w", path, err)
 	}
 
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
+
 		if !ok || gd.Tok != token.TYPE {
 			continue
 		}
 
 		for _, spec := range gd.Specs {
 			ts, ok := spec.(*ast.TypeSpec)
+
 			if !ok || ts.Name.Name != "Repository" {
 				continue
 			}
 
 			it, ok := ts.Type.(*ast.InterfaceType)
+
 			if !ok {
 				continue
 			}
 
 			var found []string
+
 			for _, m := range it.Methods.List {
 				if len(m.Names) == 0 {
 					continue // embedded interface — not used by generated repositories
 				}
+
 				key := strings.ToLower(m.Names[0].Name)
+
 				if domainMethodSet[key] {
 					found = append(found, key)
 				}
@@ -134,11 +150,13 @@ func parseRepositoryMethods(path string) ([]string, error) {
 
 func orderMethods(methods []string) []string {
 	set := make(map[string]bool, len(methods))
+
 	for _, m := range methods {
 		set[m] = true
 	}
 
 	out := make([]string, 0, len(methods))
+
 	for _, m := range domainMethodOrder {
 		if set[m] {
 			out = append(out, m)
@@ -150,6 +168,8 @@ func orderMethods(methods []string) []string {
 
 func exprString(fset *token.FileSet, expr ast.Expr) string {
 	var buf bytes.Buffer
+
 	_ = printer.Fprint(&buf, fset, expr)
+
 	return buf.String()
 }

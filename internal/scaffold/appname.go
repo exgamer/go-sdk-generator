@@ -15,16 +15,19 @@ func SetAppName(rootDir, name string) error {
 	mainPath := filepath.Join(rootDir, "main.go")
 
 	src, err := os.ReadFile(mainPath)
+
 	if err != nil {
 		return fmt.Errorf("read %s (run `codegen init` first): %w", mainPath, err)
 	}
 
 	src, ok := replaceAnnotationLine(src, "@title", name+" (API)")
+
 	if !ok {
 		return fmt.Errorf("%s: @title swagger annotation not found", mainPath)
 	}
 
 	src, ok = replaceAnnotationLine(src, "@description", name)
+
 	if !ok {
 		return fmt.Errorf("%s: @description swagger annotation not found", mainPath)
 	}
@@ -38,6 +41,7 @@ func replaceAnnotationLine(src []byte, tag, value string) ([]byte, bool) {
 	re := regexp.MustCompile(`(?m)^(//[ \t]+` + regexp.QuoteMeta(tag) + `[ \t]+).*$`)
 
 	loc := re.FindSubmatchIndex(src)
+
 	if loc == nil {
 		return src, false
 	}

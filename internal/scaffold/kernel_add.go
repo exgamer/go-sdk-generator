@@ -31,22 +31,26 @@ func AddKernel(rootDir string, kernels []string) ([]KernelResult, error) {
 	appPath := filepath.Join(rootDir, "internal", "app", "app.go")
 
 	src, err := os.ReadFile(appPath)
+
 	if err != nil {
 		return nil, fmt.Errorf("read %s (run `codegen init` first): %w", appPath, err)
 	}
 
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, appPath, src, parser.ParseComments)
+
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", appPath, err)
 	}
 
 	importDecl := findImportDecl(file)
+
 	if importDecl == nil {
 		return nil, fmt.Errorf("%s: no import declaration found", appPath)
 	}
 
 	call := findRegisterCall(file)
+
 	if call == nil {
 		return nil, fmt.Errorf("%s: RegisterAndInitKernels(...) call not found", appPath)
 	}
@@ -61,6 +65,7 @@ func AddKernel(rootDir string, kernels []string) ([]KernelResult, error) {
 
 		if existing[spec.importPath()] {
 			results = append(results, KernelResult{Kernel: k, Added: false})
+
 			continue
 		}
 
@@ -70,9 +75,11 @@ func AddKernel(rootDir string, kernels []string) ([]KernelResult, error) {
 		})
 
 		argExpr, err := parser.ParseExpr(spec.argSrc)
+
 		if err != nil {
 			return nil, fmt.Errorf("internal error: parse kernel arg for %q: %w", k, err)
 		}
+
 		call.Args = append(call.Args, argExpr)
 
 		existing[spec.importPath()] = true
@@ -85,11 +92,13 @@ func AddKernel(rootDir string, kernels []string) ([]KernelResult, error) {
 	}
 
 	var buf bytes.Buffer
+
 	if err := format.Node(&buf, fset, file); err != nil {
 		return nil, fmt.Errorf("format %s: %w", appPath, err)
 	}
 
 	formatted, err := format.Source(buf.Bytes())
+
 	if err != nil {
 		return nil, fmt.Errorf("gofmt %s: %w (source:\n%s)", appPath, err, buf.Bytes())
 	}
@@ -107,42 +116,59 @@ func findImportDecl(file *ast.File) *ast.GenDecl {
 			return gd
 		}
 	}
+
 	return nil
 }
 
 func findRegisterCall(file *ast.File) *ast.CallExpr {
+	return findCallBySelector(file, "RegisterAndInitKernels")
+}
+
+// findCallBySelector finds the first call expression anywhere in file whose
+// selector (method/function name) matches selName, e.g. a call shaped like
+// `x.RegisterAndInitKernels(...)` or `x.RegisterAndInitModules(...)`.
+func findCallBySelector(file *ast.File, selName string) *ast.CallExpr {
 	var call *ast.CallExpr
+
 	ast.Inspect(file, func(n ast.Node) bool {
 		if call != nil {
 			return false
 		}
 
 		ce, ok := n.(*ast.CallExpr)
+
 		if !ok {
 			return true
 		}
 
 		sel, ok := ce.Fun.(*ast.SelectorExpr)
-		if !ok || sel.Sel.Name != "RegisterAndInitKernels" {
+
+		if !ok || sel.Sel.Name != selName {
 			return true
 		}
 
 		call = ce
+
 		return false
 	})
+
 	return call
 }
 
 func importedPaths(decl *ast.GenDecl) map[string]bool {
 	paths := make(map[string]bool, len(decl.Specs))
+
 	for _, spec := range decl.Specs {
 		imp, ok := spec.(*ast.ImportSpec)
+
 		if !ok {
 			continue
 		}
+
 		if path, err := strconv.Unquote(imp.Path.Value); err == nil {
 			paths[path] = true
 		}
 	}
+
 	return paths
 }

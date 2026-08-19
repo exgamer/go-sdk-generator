@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"git.mpinnovations.kz/mps/go-packages/gosdk-generator/internal/gomod"
+	"github.com/exgamer/go-sdk-generator/internal/gomod"
 )
 
 // InfraPostgresOptions controls what AddInfraPostgres generates.
@@ -29,18 +29,25 @@ type modelField struct {
 
 func toModelFields(fields []Field) []modelField {
 	out := make([]modelField, 0, len(fields))
+
 	for _, f := range fields {
 		out = append(out, modelField{Name: f.Name, Type: f.Type, Column: toSnakeCase(f.Name)})
 	}
+
 	return out
 }
 
-// InfraResult is the outcome of AddInfraPostgres.
+// InfraResult is the outcome of AddInfraPostgres and the other
+// infra/entrypoints/bootstrap generators that share the same shape.
 type InfraResult struct {
 	Files []FileResult
 	// Modules are the module paths needed in go.mod for the generated code
 	// (depends on which Repository methods were found on the domain).
 	Modules []string
+	// ModuleRegistered is set by AddBootstrap: whether app.go's
+	// RegisterAndInitModules(...) call was updated (false if the module was
+	// already registered). Unused by every other generator.
+	ModuleRegistered bool
 }
 
 // AddInfraPostgres generates the postgres infrastructure layer — model.go,
@@ -51,26 +58,27 @@ type InfraResult struct {
 // re-specified.
 func AddInfraPostgres(opts InfraPostgresOptions) (InfraResult, error) {
 	root := opts.RootDir
+
 	if root == "" {
 		root = "."
 	}
 
-	if !domainNameRe.MatchString(opts.Domain) {
-		return InfraResult{}, fmt.Errorf("invalid domain %q: lowercase letters/digits only, starting with a letter", opts.Domain)
-	}
-	if !domainNameRe.MatchString(opts.Module) {
-		return InfraResult{}, fmt.Errorf("invalid module %q: lowercase letters/digits only, starting with a letter", opts.Module)
+	if err := validateDomainModule(opts.Domain, opts.Module); err != nil {
+		return InfraResult{}, err
 	}
 
 	parsed, err := ParseDomain(root, opts.Domain, opts.Module)
+
 	if err != nil {
 		return InfraResult{}, err
 	}
+
 	if len(parsed.Methods) == 0 {
 		return InfraResult{}, fmt.Errorf("internal/domains/%s/%s/repository.go: Repository interface has no recognized methods", opts.Domain, opts.Module)
 	}
 
 	modulePath, err := gomod.ModulePath(root)
+
 	if err != nil {
 		return InfraResult{}, fmt.Errorf("determine module path (run `go mod init` first): %w", err)
 	}
@@ -109,11 +117,14 @@ func AddInfraPostgres(opts InfraPostgresOptions) (InfraResult, error) {
 	}
 
 	result := InfraResult{Modules: infraPostgresModules(flags)}
+
 	for _, t := range targets {
 		fr, err := generateFile(root, filepath.Join(infraDir, t.relName), t.tmpl, data, opts.Force)
+
 		if err != nil {
 			return InfraResult{}, err
 		}
+
 		result.Files = append(result.Files, fr)
 	}
 
@@ -124,8 +135,10 @@ func AddInfraPostgres(opts InfraPostgresOptions) (InfraResult, error) {
 // needs: gorm.io/gorm always, gosdk-db-core only when Paginated is present.
 func infraPostgresModules(flags methodFlags) []string {
 	modules := []string{"gorm.io/gorm"}
+
 	if flags.HasPaginated {
 		modules = append(modules, modulesBase+"gosdk-db-core")
 	}
+
 	return modules
 }

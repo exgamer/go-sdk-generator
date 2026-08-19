@@ -1,0 +1,64 @@
+package {{.Module}}
+
+import (
+	domain "{{.DomainImport}}"
+{{- if .HasPaginated}}
+	"github.com/exgamer/gosdk-db-core/pkg/query/pagination"
+{{- end}}
+)
+{{- if .HasPaginated}}
+
+func searchFromIndexRequest(req indexRequest) *domain.Search {
+	return &domain.Search{
+		ID: req.ID,
+{{- range .SearchFields}}
+		{{.Name}}: req.{{.Name}},
+{{- end}}
+	}
+}
+{{- end}}
+{{- if .HasCreate}}
+
+func entityFromCreateRequest(req createRequest) *domain.{{.EntityName}} {
+	return &domain.{{.EntityName}}{
+{{- range .Fields}}
+		{{.Name}}: req.{{.Name}},
+{{- end}}
+	}
+}
+{{- end}}
+{{- if .HasUpdate}}
+
+func entityFromUpdateRequest(id uint, req updateRequest) *domain.{{.EntityName}} {
+	return &domain.{{.EntityName}}{
+		ID: id,
+{{- range .Fields}}
+		{{.Name}}: req.{{.Name}},
+{{- end}}
+	}
+}
+{{- end}}
+
+func itemFromEntity(e *domain.{{.EntityName}}) *item {
+	return &item{
+		ID: e.ID,
+{{- range .Fields}}
+		{{.Name}}: e.{{.Name}},
+{{- end}}
+	}
+}
+{{- if .HasPaginated}}
+
+func paginatedResponseFromPagination(paginated *pagination.Paginated[domain.{{.EntityName}}]) *paginatedItem {
+	items := make([]*item, 0, len(paginated.Items))
+
+	for _, e := range paginated.Items {
+		items = append(items, itemFromEntity(e))
+	}
+
+	return &paginatedItem{
+		Items:      items,
+		Pagination: *paginated.Pagination,
+	}
+}
+{{- end}}

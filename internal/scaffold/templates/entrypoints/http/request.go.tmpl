@@ -1,0 +1,38 @@
+package {{.Module}}
+{{- if or .HasPaginated .HasCreate .HasUpdate}}
+
+import (
+	"github.com/exgamer/gosdk-http-core/pkg/gin/validation"
+)
+{{- end}}
+{{- if .HasPaginated}}
+
+// indexRequest Request для списка
+type indexRequest struct {
+	validation.Request
+	ID uint `form:"id"`
+{{- range .SearchFields}}
+	{{.Name}} {{.Type}} `form:"{{.Column}}"`
+{{- end}}
+}
+{{- end}}
+{{- if .HasCreate}}
+
+// createRequest Request для создания {{.Module}}
+type createRequest struct {
+	validation.Request
+{{- range .Fields}}
+	{{.Name}} {{.Type}} `json:"{{.Column}}" binding:"required" validate:"required"`
+{{- end}}
+}
+{{- end}}
+{{- if .HasUpdate}}
+
+// updateRequest Request для редактирования {{.Module}}
+type updateRequest struct {
+	validation.Request
+{{- range .Fields}}
+	{{.Name}} {{.Type}} `json:"{{.Column}}" binding:"required" validate:"required"`
+{{- end}}
+}
+{{- end}}

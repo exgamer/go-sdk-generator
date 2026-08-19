@@ -1,0 +1,13 @@
+package {{.Module}}
+
+import consumer "{{.ConsumerImport}}"
+
+func newConsumersFactory() *consumersFactory {
+	return &consumersFactory{
+		{{.EntityName}}Consumer: consumer.NewConsumer(),
+	}
+}
+
+type consumersFactory struct {
+	{{.EntityName}}Consumer *consumer.Consumer
+}

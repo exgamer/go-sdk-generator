@@ -5,25 +5,29 @@ import (
 	"fmt"
 
 	domain "{{.DomainImport}}"
-	"git.mpinnovations.kz/mps/go-packages/gosdk-http-core/pkg/constants"
-	"git.mpinnovations.kz/mps/go-packages/gosdk-http-core/pkg/gin"
-	"git.mpinnovations.kz/mps/go-packages/gosdk-http-request-builder/pkg/builder"
+	"github.com/exgamer/gosdk-http-core/pkg/constants"
+	"github.com/exgamer/gosdk-http-core/pkg/gin"
+	"github.com/exgamer/gosdk-http-request-builder/pkg/builder"
+
+	"{{.ConfigsImport}}"
 )
 
-func NewHttpRepository() *HttpRepository {
-	return &HttpRepository{}
+func NewHttpRepository(cfg configs.{{.EntityName}}Config) *HttpRepository {
+	return &HttpRepository{cfg: cfg}
 }
 
-type HttpRepository struct{}
+type HttpRepository struct {
+	cfg configs.{{.EntityName}}Config
+}
 
 // GetById запрашивает {{.Module}} у внешнего сервиса по id.
-// TODO: заменить URL на реальный адрес внешнего сервиса.
+// TODO: сверить путь запроса с реальным API — cfg.ServiceHost задаёт только хост.
 func (r *HttpRepository) GetById(ctx context.Context, id uint) (*domain.{{.EntityName}}, error) {
 	httpInfo := gin.GetHttpInfoFromContext(ctx)
 
 	resp, err := builder.NewGetHttpRequestBuilder[builder.Response[{{.Module}}]](
 		ctx,
-		fmt.Sprintf("http://{{.Module}}-service/api/v1/{{.TableName}}/%d", id),
+		fmt.Sprintf("%s/api/v1/{{.TableName}}/%d", r.cfg.ServiceHost, id),
 	).SetRequestHeaders(map[string]string{
 		constants.RequestIdHeaderName: httpInfo.RequestId,
 	}).GetResult()

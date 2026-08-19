@@ -1,0 +1,46 @@
+package {{.Module}}
+
+import (
+	"github.com/exgamer/gosdk-core/pkg/app"
+	"github.com/exgamer/gosdk-http-core/pkg/di"
+	"github.com/exgamer/gosdk-http-core/pkg/middleware"
+)
+
+func SetRoutes(a *app.App, handler *Handler) error {
+	router, err := di.GetRouter(a.Container)
+
+	if err != nil {
+		return err
+	}
+
+	service := router.Group("{{.Prefix}}")
+	{
+		service.Use(middleware.RequestInfoMiddleware(a))
+		service.Use(middleware.LoggerMiddleware())
+		service.Use(middleware.DebugMiddleware())
+		service.Use(middleware.SentryMiddleware())
+
+		v1 := service.Group("/v1")
+		{
+			v1.Use(middleware.FormattedResponseMiddleware())
+			v1.Use(middleware.MetricsMiddleware(a))
+{{- if .HasPaginated}}
+			v1.GET("/{{.TableName}}", handler.Index())
+{{- end}}
+{{- if .HasGetById}}
+			v1.GET("/{{.Module}}/:id", handler.View())
+{{- end}}
+{{- if .HasCreate}}
+			v1.POST("/{{.Module}}", handler.Create())
+{{- end}}
+{{- if .HasUpdate}}
+			v1.PUT("/{{.Module}}/:id", handler.Update())
+{{- end}}
+{{- if .HasDelete}}
+			v1.DELETE("/{{.Module}}/:id", handler.Delete())
+{{- end}}
+		}
+	}
+
+	return nil
+}

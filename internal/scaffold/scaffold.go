@@ -12,7 +12,7 @@ import (
 	"strings"
 	"text/template"
 
-	"git.mpinnovations.kz/mps/go-packages/gosdk-generator/internal/gomod"
+	"github.com/exgamer/go-sdk-generator/internal/gomod"
 )
 
 //go:embed templates
@@ -28,7 +28,8 @@ type Options struct {
 	// Kernels is the subset of {"postgres", "http", "rabbit"} to register
 	// in app.go. Empty means no kernels are registered.
 	Kernels []string
-	// Force overwrites main.go / internal/app/app.go even if they already exist.
+	// Force overwrites main.go / internal/app/app.go even if they already
+	// exist. docs/docs.go is never overwritten by Force (see Run).
 	Force bool
 }
 
@@ -43,26 +44,31 @@ type Result struct {
 	Files []FileResult
 }
 
-// Run generates main.go and internal/app/app.go when they are missing
-// (or always, when opts.Force is set). Existing files are left untouched
-// unless Force is set.
+// Run generates main.go, internal/app/app.go, and a docs/docs.go placeholder
+// (for the swag-generated docs package main.go imports) when they are
+// missing. main.go/app.go are also regenerated when opts.Force is set;
+// docs/docs.go never is, so a real `swag init` output is never clobbered.
 func Run(opts Options) (Result, error) {
 	root := opts.RootDir
+
 	if root == "" {
 		root = "."
 	}
 
 	modulePath, err := gomod.ModulePath(root)
+
 	if err != nil {
 		return Result{}, fmt.Errorf("determine module path (run `go mod init` first): %w", err)
 	}
 
 	kernels := opts.Kernels
+
 	if err := validateKernels(kernels); err != nil {
 		return Result{}, err
 	}
 
 	appTitle := opts.AppTitle
+
 	if appTitle == "" {
 		appTitle = lastSegment(modulePath)
 	}
@@ -73,29 +79,39 @@ func Run(opts Options) (Result, error) {
 		HasPostgres bool
 		HasHttp     bool
 		HasRabbit   bool
+		HasRedis    bool
 	}{
 		ModulePath:  modulePath,
 		AppTitle:    appTitle,
 		HasPostgres: contains(kernels, "postgres"),
 		HasHttp:     contains(kernels, "http"),
 		HasRabbit:   contains(kernels, "rabbit"),
+		HasRedis:    contains(kernels, "redis"),
 	}
 
 	targets := []struct {
 		relPath  string
 		template string
+		force    bool
 	}{
-		{"main.go", "templates/main.go.tmpl"},
-		{filepath.Join("internal", "app", "app.go"), "templates/app.go.tmpl"},
+		{"main.go", "templates/main.go.tmpl", opts.Force},
+		{filepath.Join("internal", "app", "app.go"), "templates/app.go.tmpl", opts.Force},
+		// docs/docs.go is a placeholder for `swag init` (main.go imports it
+		// unconditionally). Never overwritten by --force: once `swag init`
+		// has generated the real file, `codegen init --force` must not
+		// clobber it back to the stub.
+		{filepath.Join("docs", "docs.go"), "templates/docs.go.tmpl", false},
 	}
 
 	result := Result{}
 
 	for _, t := range targets {
-		fr, err := generateFile(root, t.relPath, t.template, data, opts.Force)
+		fr, err := generateFile(root, t.relPath, t.template, data, t.force)
+
 		if err != nil {
 			return Result{}, err
 		}
+
 		result.Files = append(result.Files, fr)
 	}
 
@@ -116,6 +132,7 @@ func generateFile(root, relPath, tmplName string, data any, force bool) (FileRes
 	}
 
 	src, err := render(tmplName, data)
+
 	if err != nil {
 		return FileResult{}, fmt.Errorf("render %s: %w", relPath, err)
 	}
@@ -133,16 +150,19 @@ func generateFile(root, relPath, tmplName string, data any, force bool) (FileRes
 
 func render(name string, data any) ([]byte, error) {
 	tmpl, err := template.ParseFS(templatesFS, name)
+
 	if err != nil {
 		return nil, err
 	}
 
 	var buf bytes.Buffer
+
 	if err = tmpl.Execute(&buf, data); err != nil {
 		return nil, err
 	}
 
 	formatted, err := format.Source(buf.Bytes())
+
 	if err != nil {
 		return nil, fmt.Errorf("gofmt: %w (source:\n%s)", err, buf.String())
 	}
@@ -156,10 +176,12 @@ func contains(ss []string, s string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
 func lastSegment(modulePath string) string {
 	parts := strings.Split(modulePath, "/")
+
 	return parts[len(parts)-1]
 }

@@ -38,13 +38,17 @@ type Field struct {
 func ParseFields(raw string) ([]Field, error) {
 	var fields []Field
 
+	seen := make(map[string]bool)
+
 	for _, part := range strings.Split(raw, ",") {
 		part = strings.TrimSpace(part)
+
 		if part == "" {
 			continue
 		}
 
 		nameType := strings.SplitN(part, ":", 2)
+
 		if len(nameType) != 2 {
 			return nil, fmt.Errorf("invalid field %q, expected Name:type", part)
 		}
@@ -55,15 +59,22 @@ func ParseFields(raw string) ([]Field, error) {
 		if !fieldNameRe.MatchString(name) {
 			return nil, fmt.Errorf("invalid field name %q: must be a Go identifier (letters/digits, starting with a letter)", name)
 		}
+
 		name = strings.ToUpper(name[:1]) + name[1:]
 
-		if name == "ID" || name == "Status" {
+		if strings.EqualFold(name, "ID") || strings.EqualFold(name, "Status") {
 			return nil, fmt.Errorf("field %q is added automatically, do not specify it in --fields", name)
 		}
 
 		if !domainFieldTypes[typ] {
 			return nil, fmt.Errorf("unsupported type %q for field %q (allowed: string, bool, int, int64, uint, uint64, float32, float64)", typ, name)
 		}
+
+		if seen[name] {
+			return nil, fmt.Errorf("duplicate field %q", name)
+		}
+
+		seen[name] = true
 
 		fields = append(fields, Field{Name: name, Type: typ})
 	}
@@ -81,14 +92,18 @@ func ParseFields(raw string) ([]Field, error) {
 // in go-sdk-rest-template.
 func searchableFields(fields []Field) []Field {
 	var out []Field
+
 	for _, f := range fields {
 		if f.Type == "string" {
 			out = append(out, f)
+
 			continue
 		}
+
 		if strings.HasSuffix(f.Name, "ID") && integerFieldTypes[f.Type] {
 			out = append(out, f)
 		}
 	}
+
 	return out
 }

@@ -1,0 +1,6 @@
+package configs
+
+// {{.EntityName}}Config — адрес внешнего сервиса {{.Module}} (см. internal/infrastructure/http/{{.Domain}}/{{.Module}}).
+type {{.EntityName}}Config struct {
+	ServiceHost string `mapstructure:"{{.EnvVar}}"`
+}

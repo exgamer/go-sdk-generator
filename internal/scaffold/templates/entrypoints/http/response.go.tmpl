@@ -1,0 +1,30 @@
+package {{.Module}}
+
+import (
+{{- if .HasPaginated}}
+	"github.com/exgamer/gosdk-db-core/pkg/query/pagination"
+{{- end}}
+	"github.com/exgamer/gosdk-http-core/pkg/structures"
+)
+
+type item struct {
+	ID uint `json:"id"`
+{{- range .Fields}}
+	{{.Name}} {{.Type}} `json:"{{.Column}}"`
+{{- end}}
+}
+
+type itemResponse struct {
+	structures.Response[item]
+}
+{{- if .HasPaginated}}
+
+type paginatedItem struct {
+	Items      []*item               `json:"items"`
+	Pagination pagination.Pagination `json:"pagination"`
+}
+
+type paginatedResponse struct {
+	structures.Response[paginatedItem]
+}
+{{- end}}

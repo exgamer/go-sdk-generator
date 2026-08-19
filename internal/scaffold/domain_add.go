@@ -2,12 +2,38 @@ package scaffold
 
 import (
 	"fmt"
+	"go/token"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
 
 var domainNameRe = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
+
+// validateDomainModule checks that domain and module are valid, non-keyword
+// Go identifiers — they end up as package names (and module also becomes an
+// exported Go type name), so e.g. "type" or "range" would otherwise produce
+// a syntactically invalid generated file. Used by every domain/infra/
+// entrypoints generator that takes a <domain>/<module> pair.
+func validateDomainModule(domain, module string) error {
+	if !domainNameRe.MatchString(domain) {
+		return fmt.Errorf("invalid domain %q: lowercase letters/digits only, starting with a letter", domain)
+	}
+
+	if token.Lookup(domain) != token.IDENT {
+		return fmt.Errorf("invalid domain %q: %q is a reserved Go keyword", domain, domain)
+	}
+
+	if !domainNameRe.MatchString(module) {
+		return fmt.Errorf("invalid module %q: lowercase letters/digits only, starting with a letter", module)
+	}
+
+	if token.Lookup(module) != token.IDENT {
+		return fmt.Errorf("invalid module %q: %q is a reserved Go keyword", module, module)
+	}
+
+	return nil
+}
 
 // DomainOptions controls what AddDomain generates.
 type DomainOptions struct {
@@ -34,19 +60,19 @@ type DomainOptions struct {
 // go-sdk-rest-template convention (see the real "city" module).
 func AddDomain(opts DomainOptions) (Result, error) {
 	root := opts.RootDir
+
 	if root == "" {
 		root = "."
 	}
 
-	if !domainNameRe.MatchString(opts.Domain) {
-		return Result{}, fmt.Errorf("invalid domain %q: lowercase letters/digits only, starting with a letter", opts.Domain)
+	if err := validateDomainModule(opts.Domain, opts.Module); err != nil {
+		return Result{}, err
 	}
-	if !domainNameRe.MatchString(opts.Module) {
-		return Result{}, fmt.Errorf("invalid module %q: lowercase letters/digits only, starting with a letter", opts.Module)
-	}
+
 	if len(opts.Fields) == 0 {
 		return Result{}, fmt.Errorf("no fields given")
 	}
+
 	if len(opts.Methods) == 0 {
 		return Result{}, fmt.Errorf("no methods given")
 	}
@@ -78,11 +104,14 @@ func AddDomain(opts DomainOptions) (Result, error) {
 	}
 
 	result := Result{}
+
 	for _, t := range targets {
 		fr, err := generateFile(root, filepath.Join(domainDir, t.relName), t.tmpl, data, opts.Force)
+
 		if err != nil {
 			return Result{}, err
 		}
+
 		result.Files = append(result.Files, fr)
 	}
 

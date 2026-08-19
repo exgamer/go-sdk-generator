@@ -2,7 +2,7 @@ package scaffold
 
 import "fmt"
 
-const modulesBase = "git.mpinnovations.kz/mps/go-packages/"
+const modulesBase = "github.com/exgamer/"
 
 // kernelSpec describes everything needed to wire one kernel into app.go and
 // to fetch its module.
@@ -32,14 +32,20 @@ var kernelSpecs = map[string]kernelSpec{
 		alias:  "rabbitapp",
 		argSrc: "rabbitapp.NewRabbitKernel().EnableConsumer().EnablePublisher()",
 	},
+	"redis": {
+		module: modulesBase + "gosdk-redis-core",
+		alias:  "redis",
+		argSrc: "&redis.RedisKernel{}",
+	},
 }
 
 func validateKernels(kernels []string) error {
 	for _, k := range kernels {
 		if _, ok := kernelSpecs[k]; !ok {
-			return fmt.Errorf("unknown kernel %q (allowed: postgres, http, rabbit)", k)
+			return fmt.Errorf("unknown kernel %q (allowed: postgres, http, rabbit, redis)", k)
 		}
 	}
+
 	return nil
 }
 
@@ -53,11 +59,13 @@ func RequiredModules(kernels []string) []string {
 // gosdk-core).
 func KernelModules(kernels []string) []string {
 	modules := make([]string, 0, len(kernels))
+
 	for _, k := range kernels {
 		if spec, ok := kernelSpecs[k]; ok {
 			modules = append(modules, spec.module)
 		}
 	}
+
 	return modules
 }
 
@@ -70,5 +78,6 @@ func DomainModules(methods []string) []string {
 			return []string{modulesBase + "gosdk-db-core"}
 		}
 	}
+
 	return nil
 }

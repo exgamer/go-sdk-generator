@@ -7,7 +7,7 @@ import (
 	"time"
 
 	domain "{{.DomainImport}}"
-	rediscore "git.mpinnovations.kz/mps/go-packages/gosdk-redis-core/pkg/redis"
+	rediscore "github.com/exgamer/gosdk-redis-core/pkg/redis"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -51,6 +51,7 @@ func (r *RedisRepository) Get{{.EntityName}}List(ctx context.Context) ([]domain.
 // Invalidate{{.EntityName}}Cache сбрасывает кеш {{.Module}}
 func (r *RedisRepository) Invalidate{{.EntityName}}Cache(ctx context.Context, id uint) error {
 	key := keyPrefix + strconv.FormatUint(uint64(id), 10)
+
 	if err := r.client.Unlink(ctx, key).Err(); err != nil {
 		return fmt.Errorf("invalidate {{.Module}} cache: %w", err)
 	}

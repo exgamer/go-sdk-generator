@@ -19,9 +19,11 @@ var domainMethodOrder = []string{
 
 var domainMethodSet = func() map[string]bool {
 	set := make(map[string]bool, len(domainMethodOrder))
+
 	for _, m := range domainMethodOrder {
 		set[m] = true
 	}
+
 	return set
 }()
 
@@ -30,19 +32,24 @@ var domainMethodSet = func() map[string]bool {
 // methods to generate. An empty raw value means "all methods".
 func ParseMethods(raw string) ([]string, error) {
 	raw = strings.TrimSpace(raw)
+
 	if raw == "" {
 		return append([]string(nil), domainMethodOrder...), nil
 	}
 
 	selected := make(map[string]bool)
+
 	for _, part := range strings.Split(raw, ",") {
 		m := strings.ToLower(strings.TrimSpace(part))
+
 		if m == "" {
 			continue
 		}
+
 		if !domainMethodSet[m] {
 			return nil, fmt.Errorf("unknown method %q (allowed: %s)", m, strings.Join(domainMethodOrder, ", "))
 		}
+
 		selected[m] = true
 	}
 
@@ -51,6 +58,7 @@ func ParseMethods(raw string) ([]string, error) {
 	}
 
 	out := make([]string, 0, len(selected))
+
 	for _, m := range domainMethodOrder {
 		if selected[m] {
 			out = append(out, m)
@@ -74,6 +82,7 @@ type methodFlags struct {
 
 func buildMethodFlags(methods []string) methodFlags {
 	set := make(map[string]bool, len(methods))
+
 	for _, m := range methods {
 		set[m] = true
 	}

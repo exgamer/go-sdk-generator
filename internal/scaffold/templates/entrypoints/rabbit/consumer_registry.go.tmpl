@@ -1,0 +1,18 @@
+package {{.Module}}
+
+import "github.com/exgamer/gosdk-rabbit-core/pkg/config"
+
+func GetConsumers(consumer *Consumer) []config.HandlerRegister {
+	return []config.HandlerRegister{
+		{
+			Handler: consumer.Consume,
+			Config: config.NewConsumerTopicDurableConfig(
+				"{{.Domain}}-{{.Module}}-consumer", // consumer name
+				"{{.Domain}}-exchange",              // exchange
+				"{{.Domain}}-{{.Module}}-queue",     // queue
+				"{{.Domain}}.{{.Module}}.*",         // routing key
+				10,                                  // workers
+			),
+		},
+	}
+}

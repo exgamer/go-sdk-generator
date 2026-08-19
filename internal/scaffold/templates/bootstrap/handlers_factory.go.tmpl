@@ -1,0 +1,30 @@
+package {{.Module}}
+
+import (
+{{- if .HasAdmin}}
+	adminHttp "{{.AdminImport}}"
+{{- end}}
+{{- if .HasClient}}
+	clientHttp "{{.ClientImport}}"
+{{- end}}
+)
+
+func newHandlersFactory(servicesFactory *servicesFactory) *handlersFactory {
+	return &handlersFactory{
+{{- if .HasAdmin}}
+		Admin{{.EntityName}}Handler: adminHttp.NewHandler(servicesFactory.{{.EntityName}}Service),
+{{- end}}
+{{- if .HasClient}}
+		Client{{.EntityName}}Handler: clientHttp.NewHandler(servicesFactory.{{.EntityName}}Service),
+{{- end}}
+	}
+}
+
+type handlersFactory struct {
+{{- if .HasAdmin}}
+	Admin{{.EntityName}}Handler *adminHttp.Handler
+{{- end}}
+{{- if .HasClient}}
+	Client{{.EntityName}}Handler *clientHttp.Handler
+{{- end}}
+}

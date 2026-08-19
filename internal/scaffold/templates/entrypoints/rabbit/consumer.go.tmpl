@@ -1,0 +1,36 @@
+package {{.Module}}
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/ThreeDotsLabs/watermill/message"
+)
+
+type {{.Module}}Message struct {
+	ID uint `json:"id"`
+{{- range .Fields}}
+	{{.Name}} {{.Type}} `json:"{{.Column}}"`
+{{- end}}
+}
+
+func NewConsumer() *Consumer {
+	return &Consumer{}
+}
+
+type Consumer struct{}
+
+// Consume обрабатывает сообщение {{.Module}} из очереди.
+// nil = ACK (сообщение обработано), error = NACK (сообщение будет повторено).
+func (c *Consumer) Consume(ctx context.Context, msg *message.Message) error {
+	var payload {{.Module}}Message
+
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("unmarshal {{.Module}} message: %w", err)
+	}
+
+	fmt.Printf("received {{.Module}}: %+v\n", payload)
+
+	return nil
+}

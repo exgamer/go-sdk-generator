@@ -1,0 +1,46 @@
+package {{.Module}}
+
+import (
+	postgresRepo "{{.PostgresImport}}"
+{{- if .HasRedis}}
+	redisRepo "{{.RedisImport}}"
+{{- end}}
+{{- if .HasHttpClient}}
+	httpRepo "{{.HttpClientImport}}"
+	"{{.ConfigsImport}}"
+{{- end}}
+	"gorm.io/gorm"
+{{- if .HasRedis}}
+	"github.com/redis/go-redis/v9"
+{{- end}}
+)
+
+func newRepositoriesFactory(
+	client *gorm.DB,
+{{- if .HasRedis}}
+	redisClient *redis.Client,
+{{- end}}
+{{- if .HasHttpClient}}
+	httpCfg configs.{{.EntityName}}Config,
+{{- end}}
+) *repositoriesFactory {
+	return &repositoriesFactory{
+		PostgresRepository: postgresRepo.NewPostgresRepository(client),
+{{- if .HasRedis}}
+		RedisRepository: redisRepo.NewRedisRepository(redisClient),
+{{- end}}
+{{- if .HasHttpClient}}
+		HttpRepository: httpRepo.NewHttpRepository(httpCfg),
+{{- end}}
+	}
+}
+
+type repositoriesFactory struct {
+	PostgresRepository *postgresRepo.PostgresRepository
+{{- if .HasRedis}}
+	RedisRepository *redisRepo.RedisRepository
+{{- end}}
+{{- if .HasHttpClient}}
+	HttpRepository *httpRepo.HttpRepository
+{{- end}}
+}

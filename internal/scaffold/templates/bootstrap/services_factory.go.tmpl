@@ -1,0 +1,13 @@
+package {{.Module}}
+
+import domain "{{.DomainImport}}"
+
+func newServicesFactory(repositoryFactory *repositoriesFactory) *servicesFactory {
+	return &servicesFactory{
+		{{.EntityName}}Service: domain.NewService(repositoryFactory.PostgresRepository),
+	}
+}
+
+type servicesFactory struct {
+	{{.EntityName}}Service *domain.Service
+}

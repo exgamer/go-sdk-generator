@@ -16,14 +16,17 @@ func ModulePath(rootDir string) (string, error) {
 	path := filepath.Join(rootDir, "go.mod")
 
 	f, err := os.Open(path)
+
 	if err != nil {
 		return "", fmt.Errorf("open %s: %w", path, err)
 	}
+
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+
 		if after, ok := strings.CutPrefix(line, "module "); ok {
 			return strings.TrimSpace(after), nil
 		}
@@ -61,5 +64,6 @@ func runGo(dir string, args ...string) error {
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
 	return cmd.Run()
 }
